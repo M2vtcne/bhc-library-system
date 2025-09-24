@@ -1,18 +1,31 @@
 # 📚 BHC Library Borrowing Portal
 
 A simple **Library Borrowing Management System** for students and admins.  
-Students can log in with their Student ID and PIN to borrow books, while admins can manage the collection, borrowers, and track transactions.
+Students can log in with their **Student ID + PIN** to borrow/return books, while admins can manage the collection, borrowers, and track transactions.
 
 Built with **HTML/CSS/Vanilla JS** on the frontend and **Node.js + Express + SQLite** on the backend.
 
 ---
 
 ## ✨ Features
-- Admin dashboard: manage books (with cover images), borrowers, transactions, and admins.  
-- Borrower portal: login with Student ID + PIN and borrow books.  
-- CRUD API for books, borrowers, admins and transactions (SQLite backend).  
-- Auto-seed sample Filipino books with cover images.  
-- Export (CSV/PDF/JSON) - present in frontend (dashboard).  
+### 👨‍🎓 Borrower Portal
+- Student login using Student ID + PIN.  
+- Persistent login using **localStorage** (remains logged in until logout).  
+- Borrow available books with one click.  
+- Return borrowed books.  
+- View currently borrowed books.  
+- Logout option for manual control.  
+
+### 🛠️ Admin Dashboard
+- Manage **books** (CRUD with cover images).  
+- Manage **borrowers** (CRUD with Student ID, PIN, course, etc.).  
+- Track **transactions** (borrowed/returned).  
+- Export reports (**CSV, PDF, JSON**) using frontend tools.  
+- View stats/charts (via Chart.js).  
+
+### ⚙️ API (SQLite backend)
+- CRUD endpoints for **books**, **borrowers**, and **transactions**.  
+- Auto-seeds with sample Filipino books (with cover images).  
 
 ---
 
@@ -24,19 +37,17 @@ Built with **HTML/CSS/Vanilla JS** on the frontend and **Node.js + Express + SQL
 
 ## 🚀 Setup & Run (Step-by-Step)
 
-1. **Clone repository**
-   ```bash
-   git clone https://github.com/M2vtcne/bhc-library-system.git
-   cd bhc-library-system
-Install backend dependencies
-
+### 1️⃣ Clone repository
+```bash
+git clone https://github.com/M2vtcne/bhc-library-system.git
+cd bhc-library-system
+2️⃣ Install backend dependencies
 bash
 Copy code
 npm install express sqlite3 body-parser cors
 # optional (for auto-restart during dev)
 npm install --save-dev nodemon
-Start backend server
-
+3️⃣ Start backend server
 bash
 Copy code
 # plain node
@@ -44,9 +55,9 @@ node server.js
 
 # or with nodemon
 npx nodemon server.js
-The API runs at: http://localhost:3000/api
+📡 The API runs at: http://localhost:3000/api
 
-Serve frontend
+4️⃣ Serve frontend
 Option A — Node http-server:
 
 bash
@@ -58,9 +69,8 @@ Option B — Python:
 bash
 Copy code
 python -m http.server 8080
-Open in browser:
-
-Login module -> http://localhost:8080/index.html
+5️⃣ Open in browser
+Login module → http://localhost:8080/index.html
 
 Admin dashboard → http://localhost:8080/dashboard.html
 

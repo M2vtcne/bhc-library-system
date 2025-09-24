@@ -38,6 +38,21 @@
       line-height: 1.2;
     }
 
+    header button {
+      margin-left: auto;
+      background: #8B1C3D;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
+    }
+    header button:hover {
+      background: #6d152f;
+    }
+
     /* LOGIN BOX */
     .login-box {
       margin-top: 80px;
@@ -151,6 +166,7 @@
   <header>
     <img src="assets/bhc-logo.png" alt="BHC Logo">
     <h1>BHC Library Borrowing Portal</h1>
+    <button onclick="logoutBorrower()">Logout</button>
   </header>
 
   <!-- LOGIN -->
@@ -165,74 +181,136 @@
   <div class="book-list" id="bookListSection">
     <h2>📚 Available Books</h2>
     <div class="books-grid" id="bookList"></div>
+
+    <h2>📖 My Borrowed Books</h2>
+    <div class="books-grid" id="myBooks"></div>
   </div>
 
-  <script>
-    let currentBorrower = null;
+<script>
+  let currentBorrower = null;
 
-    // LOGIN
-    function loginBorrower() {
-      const id = document.getElementById("studentId").value.trim();
-      const pin = document.getElementById("studentPin").value.trim();
-
-      fetch("http://localhost:3000/api/borrowers/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: id, pin: pin })
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("❌ Invalid Student ID or PIN");
-        return res.json();
-      })
-      .then(data => {
-        currentBorrower = data.borrower;
-        alert("✅ Welcome " + currentBorrower.name);
-        document.getElementById("borrowerLogin").style.display = "none";
-        document.getElementById("bookListSection").style.display = "block";
-        loadBooks();
-      })
-      .catch(err => alert(err.message));
+  // AUTO LOGIN kung may saved sa localStorage
+  window.onload = () => {
+    const saved = localStorage.getItem("borrower");
+    if (saved) {
+      currentBorrower = JSON.parse(saved);
+      document.getElementById("borrowerLogin").style.display = "none";
+      document.getElementById("bookListSection").style.display = "block";
+      loadBooks();
     }
+  };
 
-    // LOAD BOOKS
-    function loadBooks() {
-      fetch("http://localhost:3000/api/books")
-        .then(res => res.json())
-        .then(books => {
-          const bookList = document.getElementById("bookList");
-          bookList.innerHTML = "";
-          books.forEach(book => {
+  // LOGIN
+  function loginBorrower() {
+    const id = document.getElementById("studentId").value.trim();
+    const pin = document.getElementById("studentPin").value.trim();
+
+    fetch("http://localhost:3000/api/borrowers/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: id, pin: pin })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("❌ Invalid Student ID or PIN");
+      return res.json();
+    })
+    .then(data => {
+      currentBorrower = data.borrower;
+      localStorage.setItem("borrower", JSON.stringify(currentBorrower));
+      alert("✅ Welcome " + currentBorrower.name);
+      document.getElementById("borrowerLogin").style.display = "none";
+      document.getElementById("bookListSection").style.display = "block";
+      loadBooks();
+    })
+    .catch(err => alert(err.message));
+  }
+
+  // LOGOUT
+  function logoutBorrower() {
+    localStorage.removeItem("borrower");
+    currentBorrower = null;
+    document.getElementById("bookListSection").style.display = "none";
+    document.getElementById("borrowerLogin").style.display = "block";
+  }
+
+  // LOAD BOOKS
+  function loadBooks() {
+    if (!currentBorrower) return;
+
+    // Available books
+    fetch("http://localhost:3000/api/books")
+      .then(res => res.json())
+      .then(books => {
+        const bookList = document.getElementById("bookList");
+        bookList.innerHTML = "";
+        books.forEach(book => {
+          if (book.status === "Available") {
             const div = document.createElement("div");
             div.className = "book";
             div.innerHTML = `
+              <img src="${book.image || 'https://via.placeholder.com/120x160'}"
+                   alt="cover"
+                   style="width:100%; height:200px; object-fit:cover; border-radius:6px; margin-bottom:10px;">
               <strong>${book.title}</strong>
               <p>by ${book.author}</p>
               <button onclick="borrowBook(${book.id})">Borrow</button>
             `;
             bookList.appendChild(div);
-          });
+          }
         });
-    }
+      });
 
-    // BORROW BOOK
-    function borrowBook(bookId) {
-      if (!currentBorrower) {
-        alert("❌ Please login first");
-        return;
-      }
-
-      fetch("http://localhost:3000/api/borrow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: currentBorrower.studentId, bookId })
-      })
+    // My Borrowed Books
+    fetch(`http://localhost:3000/api/mybooks/${currentBorrower.studentId}`)
       .then(res => res.json())
-      .then(data => {
-        alert("📖 " + data.message);
-        loadBooks(); // refresh available books
-      })
-      .catch(err => alert("❌ " + err.message));
-    }
-  </script>
+      .then(myBooksData => {
+        const myBooks = document.getElementById("myBooks");
+        myBooks.innerHTML = "";
+        myBooksData.forEach(book => {
+          const div = document.createElement("div");
+          div.className = "book";
+          div.innerHTML = `
+            <img src="${book.image || 'https://via.placeholder.com/120x160'}"
+                 alt="cover"
+                 style="width:100%; height:200px; object-fit:cover; border-radius:6px; margin-bottom:10px;">
+            <strong>${book.title}</strong>
+            <p>by ${book.author}</p>
+            <button onclick="returnBook(${book.id})">Return</button>
+          `;
+          myBooks.appendChild(div);
+        });
+      });
+  }
+
+  // BORROW BOOK
+  function borrowBook(bookId) {
+    fetch("http://localhost:3000/api/borrow", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: currentBorrower.studentId, bookId })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert("📖 " + data.message);
+      loadBooks();
+    })
+    .catch(err => alert("❌ " + err.message));
+  }
+
+  // RETURN BOOK
+  function returnBook(bookId) {
+    fetch("http://localhost:3000/api/return", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: currentBorrower.studentId, bookId })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert("🔄 " + data.message);
+      loadBooks();
+    })
+    .catch(err => alert("❌ " + err.message));
+  }
+</script>
 </body>
 </html>

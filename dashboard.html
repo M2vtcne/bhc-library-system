@@ -592,6 +592,25 @@ async function seedBooks() {
   await fetchBooks();
 }
 
+function renderBorrowers() {
+  const list = document.getElementById("borrowerList");
+  list.innerHTML = "";
+  borrowers.forEach(b => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${b.name}</td>
+      <td>${b.studentId}</td>
+      <td>${b.course}</td>
+      <td>${b.pin || "****"}</td>
+      <td>
+        <button onclick="editBorrower(${b.id}, '${b.studentId}', '${b.name}', '${b.course}')">✏ Edit</button>
+        <button onclick="deleteBorrower(${b.id})">🗑 Delete</button>
+      </td>
+    `;
+    list.appendChild(row);
+  });
+}
+
 
 /* ======================
    BOOKS
@@ -671,28 +690,57 @@ document.getElementById("bookForm").addEventListener("submit", async (e) => {
   fetchBooks();
 });
 
-/* ======================
-   BORROWERS
-   ====================== */
-function renderBorrowers() {
-  const borrowerListEl = document.getElementById("borrowerList");
-  borrowerListEl.innerHTML = "";
-  borrowers.forEach(b => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${b.name}</td>
-      <td>${b.studentId}</td>
-      <td>${b.course}</td>
-      <td>****</td>
-      <td>-</td>
-      <td>
-        <button class="edit">✏ Edit</button>
-        <button class="delete">🗑 Remove</button>
-      </td>
-    `;
-    borrowerListEl.appendChild(row);
-  });
+
+// Add/Edit Borrower
+document.getElementById("borrowerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const studentId = document.getElementById("borrowerID").value.trim();
+
+  const name = document.getElementById("borrowerName").value.trim();
+  const course = document.getElementById("borrowerCourse").value.trim();
+  const pin = document.getElementById("borrowerPin").value.trim();
+  const idx = document.getElementById("editBorrowerIndex").value;
+
+  if (idx) {
+    // Update existing
+    await fetch(`${API}/borrowers/${idx}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, course, pin })
+    });
+  } else {
+    // Create new
+    await fetch(`${API}/borrowers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, name, course, pin })
+    });
+  }
+
+  e.target.reset();
+  document.getElementById("editBorrowerIndex").value = "";
+  fetchBorrowers();
+});
+
+// Edit Borrower
+function editBorrower(id, studentId, name, course) {
+  document.getElementById("borrowerID").value = studentId;
+  document.getElementById("borrowerName").value = name;
+  document.getElementById("borrowerCourse").value = course;
+  document.getElementById("editBorrowerIndex").value = id;
 }
+
+
+// Delete Borrower
+async function deleteBorrower(id) {
+  if (!confirm("Delete this borrower?")) return;
+  await fetch(`${API}/borrowers/${id}`, { method: "DELETE" });
+  fetchBorrowers();
+}
+
+// Load Borrowers initially
+fetchBorrowers();
+
 
 /* ======================
    TRANSACTIONS
@@ -790,6 +838,8 @@ document.getElementById("searchBook").addEventListener("input", (e) => {
 document.getElementById("filterCategory").addEventListener("change", () => {
   renderBooks(document.getElementById("searchBook").value);
 });
+
+
 </script>
 </body>
 </html>

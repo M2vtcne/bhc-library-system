@@ -171,6 +171,29 @@ app.post("/api/borrowers/login", (req, res) => {
   });
 });
 
+// Update borrower
+app.put("/api/borrowers/:id", (req, res) => {
+  const { name, course, pin } = req.body;
+  db.run(
+    "UPDATE borrowers SET name = ?, course = ?, pin = ? WHERE id = ?",
+    [name, course, pin, req.params.id],
+    function (err) {
+      if (err) res.status(500).json({ error: err.message });
+      else res.json({ updated: this.changes });
+    }
+  );
+});
+
+// Delete borrower
+app.delete("/api/borrowers/:id", (req, res) => {
+  db.run("DELETE FROM borrowers WHERE id = ?", req.params.id, function (err) {
+    if (err) res.status(500).json({ error: err.message });
+    else res.json({ deleted: this.changes });
+  });
+});
+
+
+
 // ---------------------- TRANSACTIONS ----------------------
 app.get("/api/transactions", (req, res) => {
   db.all("SELECT * FROM transactions ORDER BY date DESC", [], (err, rows) => {
@@ -182,18 +205,28 @@ app.get("/api/transactions", (req, res) => {
 app.post("/api/borrow", (req, res) => {
   const { studentId, bookId } = req.body;
   const date = new Date().toISOString().split("T")[0];
-  db.run(
-    "INSERT INTO transactions (studentId, bookId, date, type) VALUES (?, ?, ?, ?)",
-    [studentId, bookId, date, "Borrowed"],
-    function (err) {
-      if (err) res.status(500).json({ error: err.message });
-      else {
-        db.run("UPDATE books SET status='Borrowed' WHERE id=?", [bookId]);
-        res.json({ message: "Book borrowed successfully!" });
+
+  // Check kung available pa yung libro
+  db.get("SELECT status FROM books WHERE id = ?", [bookId], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: "Book not found" });
+    if (row.status === "Borrowed") return res.status(400).json({ error: "Book already borrowed" });
+
+    // Insert transaction
+    db.run(
+      "INSERT INTO transactions (studentId, bookId, date, type) VALUES (?, ?, ?, ?)",
+      [studentId, bookId, date, "Borrowed"],
+      function (err) {
+        if (err) res.status(500).json({ error: err.message });
+        else {
+          db.run("UPDATE books SET status='Borrowed' WHERE id=?", [bookId]);
+          res.json({ message: "Book borrowed successfully!" });
+        }
       }
-    }
-  );
+    );
+  });
 });
+
 
 app.post("/api/return", (req, res) => {
   const { studentId, bookId } = req.body;
@@ -210,6 +243,29 @@ app.post("/api/return", (req, res) => {
     }
   );
 });
+
+// Get all borrowed books for a specific borrower
+app.get("/api/mybooks/:studentId", (req, res) => {
+  const { studentId } = req.params;
+
+  db.all(
+    `SELECT b.* FROM books b
+     JOIN (
+       SELECT bookId, MAX(id) as latestId
+       FROM transactions
+       GROUP BY bookId
+     ) latest ON b.id = latest.bookId
+     JOIN transactions t ON t.id = latest.latestId
+     WHERE t.studentId = ? AND t.type = 'Borrowed'`,
+    [studentId],
+    (err, rows) => {
+      if (err) res.status(500).json({ error: err.message });
+      else res.json(rows);
+    }
+  );
+});
+
+
 
 // Start server
 app.listen(PORT, () => {
