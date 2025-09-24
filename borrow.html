@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BHC Library - Borrower</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    header {
+      width: 100%;
+      background: linear-gradient(90deg, #8B1C3D, #2B4B9C);
+      color: white;
+      padding: 15px 30px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    header img {
+      height: 50px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    header h1 {
+      font-size: 22px;
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    /* LOGIN BOX */
+    .login-box {
+      margin-top: 80px;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+      width: 360px;
+      text-align: center;
+      animation: fadeIn 0.5s ease;
+    }
+    .login-box h2 {
+      color: #2B4B9C;
+      margin-bottom: 20px;
+    }
+    .login-box input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      box-sizing: border-box;
+      transition: all 0.3s;
+    }
+    .login-box input:focus {
+      border-color: #2B4B9C;
+      outline: none;
+      box-shadow: 0 0 4px rgba(43,75,156,0.4);
+    }
+    .login-box button {
+      width: 100%;
+      padding: 12px;
+      background: #8B1C3D;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.3s ease;
+    }
+    .login-box button:hover {
+      background: #6d152f;
+      transform: scale(1.03);
+    }
+
+    /* BOOK LIST */
+    .book-list {
+      display: none;
+      margin-top: 40px;
+      width: 95%;
+      max-width: 1000px;
+      animation: fadeIn 0.5s ease;
+    }
+    .book-list h2 {
+      color: #2B4B9C;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .books-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .book {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .book:hover {
+      transform: scale(1.03);
+    }
+    .book strong {
+      font-size: 16px;
+      color: #2B4B9C;
+    }
+    .book p {
+      margin: 6px 0;
+      color: #555;
+    }
+    .book button {
+      align-self: flex-start;
+      margin-top: 10px;
+      padding: 10px 16px;
+      background: #2B4B9C;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+    .book button:hover {
+      background: #8B1C3D;
+      transform: scale(1.05);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="assets/bhc-logo.png" alt="BHC Logo">
+    <h1>BHC Library Borrowing Portal</h1>
+  </header>
+
+  <!-- LOGIN -->
+  <div class="login-box" id="borrowerLogin">
+    <h2>Borrower Login</h2>
+    <input type="text" id="studentId" placeholder="Student ID" required>
+    <input type="password" id="studentPin" placeholder="4-digit PIN" required maxlength="4">
+    <button onclick="loginBorrower()">Login</button>
+  </div>
+
+  <!-- BOOK LIST -->
+  <div class="book-list" id="bookListSection">
+    <h2>📚 Available Books</h2>
+    <div class="books-grid" id="bookList"></div>
+  </div>
+
+  <script>
+    let currentBorrower = null;
+
+    // LOGIN
+    function loginBorrower() {
+      const id = document.getElementById("studentId").value.trim();
+      const pin = document.getElementById("studentPin").value.trim();
+
+      fetch("http://localhost:3000/api/borrowers/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: id, pin: pin })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("❌ Invalid Student ID or PIN");
+        return res.json();
+      })
+      .then(data => {
+        currentBorrower = data.borrower;
+        alert("✅ Welcome " + currentBorrower.name);
+        document.getElementById("borrowerLogin").style.display = "none";
+        document.getElementById("bookListSection").style.display = "block";
+        loadBooks();
+      })
+      .catch(err => alert(err.message));
+    }
+
+    // LOAD BOOKS
+    function loadBooks() {
+      fetch("http://localhost:3000/api/books")
+        .then(res => res.json())
+        .then(books => {
+          const bookList = document.getElementById("bookList");
+          bookList.innerHTML = "";
+          books.forEach(book => {
+            const div = document.createElement("div");
+            div.className = "book";
+            div.innerHTML = `
+              <strong>${book.title}</strong>
+              <p>by ${book.author}</p>
+              <button onclick="borrowBook(${book.id})">Borrow</button>
+            `;
+            bookList.appendChild(div);
+          });
+        });
+    }
+
+    // BORROW BOOK
+    function borrowBook(bookId) {
+      if (!currentBorrower) {
+        alert("❌ Please login first");
+        return;
+      }
+
+      fetch("http://localhost:3000/api/borrow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: currentBorrower.studentId, bookId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert("📖 " + data.message);
+        loadBooks(); // refresh available books
+      })
+      .catch(err => alert("❌ " + err.message));
+    }
+  </script>
+</body>
+</html>

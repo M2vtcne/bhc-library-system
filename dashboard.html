@@ -343,7 +343,6 @@ body, main, table, .stat-box, .sidebar, header {
   </div>
 
   <div class="header-right">
-    <!-- notification bell -->
     <button class="notif-btn" id="notifBtn" title="Notifications">🔔
       <span class="notif-badge" id="notifBadge" style="display:none">0</span>
     </button>
@@ -353,7 +352,6 @@ body, main, table, .stat-box, .sidebar, header {
     </div>
 
     <div class="header-user" id="headerUser">Guest</div>
-
     <button id="darkToggle">🌙</button>
     <button id="logoutBtn">Logout</button>
   </div>
@@ -381,42 +379,70 @@ body, main, table, .stat-box, .sidebar, header {
   </section>
 
   <!-- Books -->
-  <section id="books">
-    <h2>📚 Books Collection</h2>
-    <form id="bookForm">
-      <input type="hidden" id="editBookIndex">
-      <input type="text" id="bookTitle" placeholder="Book Title" required>
-      <input type="text" id="bookAuthor" placeholder="Author" required>
-      <input type="text" id="bookCategory" placeholder="Category">
-      <button type="submit">➕ Add / Update Book</button>
-    </form>
-    <div style="margin-top:8px;">
-      <input type="text" id="searchBook" class="search-box" placeholder="🔍 Search Book..." style="width:60%;">
-      <select id="filterCategory" style="margin-left:8px; padding:8px; border-radius:6px;">
-        <option value="">All categories</option>
-      </select>
-    </div>
-    <table>
-      <thead><tr><th>Title</th><th>Author</th><th>Category</th><th>Status</th><th>Action</th></tr></thead>
-      <tbody id="bookList"></tbody>
-    </table>
-  </section>
+<section id="books">
+  <h2>📚 Books Collection</h2>
+  <form id="bookForm">
+    <input type="hidden" id="editBookIndex">
+    <input type="text" id="bookImage" placeholder="Image URL">
+    <input type="text" id="bookTitle" placeholder="Book Title" required>
+    <input type="text" id="bookAuthor" placeholder="Author" required>
+    <input type="text" id="bookCategory" placeholder="Category">
+    <button type="submit">➕ Add / Update Book</button>
+  </form>
 
-  <!-- Borrowers -->
-  <section id="borrowers">
-    <h2>👥 Borrowers</h2>
-    <form id="borrowerForm">
-      <input type="hidden" id="editBorrowerIndex">
-      <input type="text" id="borrowerName" placeholder="Borrower Name" required>
-      <input type="text" id="borrowerID" placeholder="Student ID" required>
-      <input type="text" id="borrowerCourse" placeholder="Course/Year" required>
-      <button type="submit">➕ Add / Update Borrower</button>
-    </form>
-    <table>
-      <thead><tr><th>Name</th><th>ID</th><th>Course</th><th>History</th><th>Action</th></tr></thead>
-      <tbody id="borrowerList"></tbody>
-    </table>
-  </section>
+  <div style="margin-top:8px;">
+    <input type="text" id="searchBook" class="search-box" placeholder="🔍 Search Book..." style="width:60%;">
+    <select id="filterCategory" style="margin-left:8px; padding:8px; border-radius:6px;">
+      <option value="">All categories</option>
+    </select>
+  </div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Cover</th>
+      <th>Title</th>
+      <th>Author</th>
+      <th>Category</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody id="bookList"></tbody>
+</table>
+
+</section>
+
+
+<!-- Borrowers -->
+<section id="borrowers">
+  <h2>👥 Borrowers</h2>
+  <form id="borrowerForm">
+    <input type="hidden" id="editBorrowerIndex">
+
+    <input type="text" id="borrowerName" placeholder="Borrower Name" required>
+    <input type="text" id="borrowerID" placeholder="Student ID" required>
+    <input type="text" id="borrowerCourse" placeholder="Course/Year" required>
+    <input type="password" id="borrowerPin" placeholder="4-digit PIN" required maxlength="4">
+
+    <button type="submit">➕ Add / Update Borrower</button>
+  </form>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>ID</th>
+        <th>Course</th>
+        <th>PIN</th>
+        <th>History</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="borrowerList"></tbody>
+  </table>
+</section>
+
 
   <!-- Transactions -->
   <section id="transactions">
@@ -476,510 +502,294 @@ body, main, table, .stat-box, .sidebar, header {
 
 <script>
 /* ======================
-   Data + Persistence
+   CONFIG
    ====================== */
-function saveData(){
-  localStorage.setItem('books', JSON.stringify(books));
-  localStorage.setItem('borrowers', JSON.stringify(borrowers));
-  localStorage.setItem('transactions', JSON.stringify(transactions));
-  localStorage.setItem('admins', JSON.stringify(admins));
-  // store currently logged admin too
-  localStorage.setItem('loggedInAdmin', JSON.stringify(loggedInAdmin));
+const API = "http://localhost:3000/api";
+
+let books = [];
+let borrowers = [];
+let transactions = [];
+let admins = [];
+let loggedInAdmin = JSON.parse(localStorage.getItem("loggedInAdmin")) 
+  || { username: "admin", role: "Super Admin" };
+
+/* ======================
+   FETCH HELPERS
+   ====================== */
+async function fetchBooks() {
+  const res = await fetch(`${API}/books`);
+  books = await res.json();
+  renderBooks();
+  updateStats();
+}
+async function fetchBorrowers() {
+  const res = await fetch(`${API}/borrowers`);
+  borrowers = await res.json();
+  renderBorrowers();
+}
+async function fetchTransactions() {
+  const res = await fetch(`${API}/transactions`);
+  transactions = await res.json();
+  renderTransactions();
+  updateStats();
+}
+async function fetchAdmins() {
+  const res = await fetch(`${API}/admins`);
+  admins = await res.json();
+  renderAdmins();
 }
 
-/* Load from storage or initialize */
-let books = JSON.parse(localStorage.getItem('books')) || [];
-let borrowers = JSON.parse(localStorage.getItem('borrowers')) || [];
-let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-let admins = JSON.parse(localStorage.getItem('admins')) || [{ username: "admin", password: "admin123", role: "Super Admin" }];
-
-/* loggedInAdmin: stored {username, role} in localStorage.loggedInAdmin
-   For this dashboard file: if not present, set default to first admin */
-let loggedInAdmin = JSON.parse(localStorage.getItem('loggedInAdmin')) || (admins.length ? { username: admins[0].username, role: admins[0].role } : { username: 'guest', role: 'Viewer' });
-localStorage.setItem('loggedInAdmin', JSON.stringify(loggedInAdmin));
-
-/* =======================
-   Role-based UI helpers
-   ======================= */
-function applyRolePermissions(){
-  // Tab permissions map
-  const perms = {
-    "Super Admin": ['dashboard','books','borrowers','transactions','admins','reports'],
-    "Librarian": ['dashboard','books','borrowers','transactions','reports'],
-    "Staff": ['dashboard','books','borrowers','transactions'],
-    "Viewer": ['dashboard','reports']
-  };
-  const allowed = perms[loggedInAdmin.role] || [];
-  // show/hide sidebar links
-  document.querySelectorAll('.sidebar a').forEach(a=>{
-    const sec = a.getAttribute('data-section');
-    if(allowed.includes(sec)) {
-      a.style.display = 'block';
-    } else {
-      a.style.display = 'none';
-      // if currently active section is hidden, switch to dashboard
-      if(a.classList.contains('active')) a.classList.remove('active');
+/* ======================
+   SAMPLE BOOKS SEED
+   ====================== */
+async function seedBooks() {
+  if (books.length > 0) return;
+  const sampleBooks = [
+    { 
+      title: "Noli Me Tangere", 
+      author: "José Rizal", 
+      category: "Classic",
+      image: "https://covers.openlibrary.org/b/id/8231856-L.jpg"
+    },
+    { 
+      title: "El Filibusterismo", 
+      author: "José Rizal", 
+      category: "Classic",
+      image: "https://covers.openlibrary.org/b/id/10952756-L.jpg"
+    },
+    { 
+      title: "Banaag at Sikat", 
+      author: "Lope K. Santos", 
+      category: "Novel",
+      image: "https://covers.openlibrary.org/b/id/13148632-L.jpg"
+    },
+    { 
+      title: "Mga Ibong Mandaragit", 
+      author: "Amado V. Hernandez", 
+      category: "Novel",
+      image: "https://covers.openlibrary.org/b/id/10959572-L.jpg"
+    },
+    { 
+      title: "Dekada ’70", 
+      author: "Lualhati Bautista", 
+      category: "Historical",
+      image: "https://covers.openlibrary.org/b/id/9254994-L.jpg"
+    },
+    { 
+      title: "Bulaklak sa City Jail", 
+      author: "Lualhati Bautista", 
+      category: "Novel",
+      image: "https://upload.wikimedia.org/wikipedia/en/4/47/Bulaklak_sa_City_Jail_poster.jpg"
     }
-  });
-  // if active section is hidden or none active, show dashboard
-  const active = document.querySelector('.sidebar a.active');
-  if(!active || active.style.display === 'none'){
-    const dashLink = document.querySelector('.sidebar a[data-section="dashboard"]');
-    dashLink.classList.add('active');
-    showSection('dashboard');
+  ];
+  for (const b of sampleBooks) {
+    await fetch(`${API}/books`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(b)
+    }).catch(() => {});
   }
-  // header user label
-  document.getElementById('headerUser').textContent = loggedInAdmin.username + " — " + loggedInAdmin.role;
+  await fetchBooks();
 }
 
-/* =======================
-   Navigation + UI helpers
-   ======================= */
-function showSection(id) {
-  // hide all sections
-  document.querySelectorAll('main section').forEach(s => s.classList.remove('active'));
-  // add active
-  const sec = document.getElementById(id);
-  if(sec) sec.classList.add('active');
-  // update sidebar active
-  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-  const link = document.querySelector(`.sidebar a[data-section="${id}"]`);
-  if(link) link.classList.add('active');
-  // update stats / chart when needed
-  if(id === 'reports') renderReports();
-}
-/* Handle clicking sidebar links that are anchor tags */
-document.querySelectorAll('.sidebar a').forEach(a=>{
-  a.addEventListener('click', (e) => {
-    e.preventDefault();
-    const sec = a.getAttribute('data-section');
-    // only allow clicking if visible (role)
-    if(a.style.display === 'none') return;
-    showSection(sec);
-  });
-});
 
-/* =======================
-   BOOKS (with categories + filter)
-   ======================= */
-const bookListEl = document.getElementById('bookList');
-const filterCategoryEl = document.getElementById('filterCategory');
-
+/* ======================
+   BOOKS
+   ====================== */
 function renderBooks(filter = "") {
-  // build categories set
+  const bookListEl = document.getElementById("bookList");
+  const filterCategoryEl = document.getElementById("filterCategory");
+  bookListEl.innerHTML = "";
+  const catFilter = filterCategoryEl.value || "";
+
   const categories = new Set();
-  bookListEl.innerHTML = '';
-  const catFilter = filterCategoryEl.value || '';
   books.filter(b => {
-    const matchesText = (b.title || '').toLowerCase().includes(filter.toLowerCase()) || (b.author || '').toLowerCase().includes(filter.toLowerCase());
+    const matchesText =
+      (b.title || "").toLowerCase().includes(filter.toLowerCase()) ||
+      (b.author || "").toLowerCase().includes(filter.toLowerCase());
     const matchesCat = !catFilter || (b.category === catFilter);
     return matchesText && matchesCat;
-  }).forEach((book, index) => {
-    if(book.category) categories.add(book.category);
-    const row = document.createElement('tr');
+  }).forEach(book => {
+    if (book.category) categories.add(book.category);
+    const row = document.createElement("tr");
     row.innerHTML = `
+      <td><img src="${book.image || 'https://via.placeholder.com/50'}" alt="cover" style="width:50px;height:auto;border-radius:4px;"></td>
       <td>${book.title}</td>
       <td>${book.author}</td>
-      <td>${book.category || '-'}</td>
-      <td>${book.status || 'Available'}</td>
+      <td>${book.category || "-"}</td>
+      <td>${book.status || "Available"}</td>
       <td>
         <button class="edit">✏ Edit</button>
         <button class="delete">🗑 Delete</button>
       </td>
     `;
-    row.querySelector('.delete').addEventListener('click', () => {
-      if(!confirm('Delete this book?')) return;
-      books.splice(index, 1);
-      saveData(); renderBooks(); updateStats();
+    row.querySelector(".delete").addEventListener("click", async () => {
+      if (!confirm("Delete this book?")) return;
+      await fetch(`${API}/books/${book.id}`, { method: "DELETE" });
+      fetchBooks();
     });
-    row.querySelector('.edit').addEventListener('click', () => {
-      document.getElementById('bookTitle').value = book.title;
-      document.getElementById('bookAuthor').value = book.author;
-      document.getElementById('bookCategory').value = book.category || '';
-      document.getElementById('editBookIndex').value = index;
+    row.querySelector(".edit").addEventListener("click", () => {
+      document.getElementById("bookTitle").value = book.title;
+      document.getElementById("bookAuthor").value = book.author;
+      document.getElementById("bookCategory").value = book.category || "";
+      document.getElementById("bookImage").value = book.image || "";
+      document.getElementById("editBookIndex").value = book.id;
     });
     bookListEl.appendChild(row);
   });
 
-  // populate filterCategory
   filterCategoryEl.innerHTML = '<option value="">All categories</option>';
   Array.from(categories).sort().forEach(c => {
-    const opt = document.createElement('option'); opt.value = c; opt.textContent = c;
+    const opt = document.createElement("option");
+    opt.value = c; opt.textContent = c;
     filterCategoryEl.appendChild(opt);
   });
-
-  updateTransactionBooks();
-  updateStats();
 }
 
-document.getElementById('bookForm').addEventListener('submit', (e) => {
+document.getElementById("bookForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const title = document.getElementById('bookTitle').value.trim();
-  const author = document.getElementById('bookAuthor').value.trim();
-  const category = document.getElementById('bookCategory').value.trim();
-  const idx = document.getElementById('editBookIndex').value;
-  if(idx) {
-    books[idx] = { ...books[idx], title, author, category };
-    document.getElementById('editBookIndex').value = '';
+  const title = document.getElementById("bookTitle").value.trim();
+  const author = document.getElementById("bookAuthor").value.trim();
+  const category = document.getElementById("bookCategory").value.trim();
+  const image = document.getElementById("bookImage").value.trim();
+  const idx = document.getElementById("editBookIndex").value;
+
+  if (idx) {
+    await fetch(`${API}/books/${idx}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, author, category, image })
+    });
   } else {
-    books.push({ title, author, category, status: 'Available' });
+    await fetch(`${API}/books`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, author, category, image })
+    });
   }
-  saveData();
-  renderBooks();
   e.target.reset();
+  fetchBooks();
 });
 
-document.getElementById('searchBook').addEventListener('input', (e) => renderBooks(e.target.value));
-filterCategoryEl.addEventListener('change', () => renderBooks(document.getElementById('searchBook').value || ''));
-
-/* =======================
-   BORROWERS (with history)
-   ======================= */
-const borrowerListEl = document.getElementById('borrowerList');
-
+/* ======================
+   BORROWERS
+   ====================== */
 function renderBorrowers() {
-  borrowerListEl.innerHTML = '';
-  borrowers.forEach((b, index) => {
-    // build small history text
-    const history = transactions.filter(t => t.borrower === b.name).map(t => `${t.book} (${t.type})`).join(', ');
-    const row = document.createElement('tr');
+  const borrowerListEl = document.getElementById("borrowerList");
+  borrowerListEl.innerHTML = "";
+  borrowers.forEach(b => {
+    const row = document.createElement("tr");
     row.innerHTML = `
       <td>${b.name}</td>
-      <td>${b.id}</td>
+      <td>${b.studentId}</td>
       <td>${b.course}</td>
-      <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${history || '-'}">${history || '-'}</td>
+      <td>****</td>
+      <td>-</td>
       <td>
         <button class="edit">✏ Edit</button>
         <button class="delete">🗑 Remove</button>
       </td>
     `;
-    row.querySelector('.delete').addEventListener('click', () => {
-      if(!confirm('Remove borrower?')) return;
-      borrowers.splice(index,1); saveData(); renderBorrowers(); updateTransactionBorrowers();
-    });
-    row.querySelector('.edit').addEventListener('click', () => {
-      document.getElementById('borrowerName').value = b.name;
-      document.getElementById('borrowerID').value = b.id;
-      document.getElementById('borrowerCourse').value = b.course;
-      document.getElementById('editBorrowerIndex').value = index;
-    });
     borrowerListEl.appendChild(row);
   });
-  updateTransactionBorrowers();
-  updateStats();
 }
 
-document.getElementById('borrowerForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = document.getElementById('borrowerName').value.trim();
-  const id = document.getElementById('borrowerID').value.trim();
-  const course = document.getElementById('borrowerCourse').value.trim();
-  const idx = document.getElementById('editBorrowerIndex').value;
-  if(idx) {
-    borrowers[idx] = { name, id, course };
-    document.getElementById('editBorrowerIndex').value = '';
-  } else {
-    borrowers.push({ name, id, course });
-  }
-  saveData(); renderBorrowers(); e.target.reset();
-});
-
-/* =======================
+/* ======================
    TRANSACTIONS
-   ======================= */
-const transactionListEl = document.getElementById('transactionList');
-
+   ====================== */
 function renderTransactions() {
-  transactionListEl.innerHTML = '';
-  transactions.slice().reverse().forEach(t => { // show latest first
-    const li = document.createElement('li');
-    const dueText = t.dueDate ? ` (Due: ${t.dueDate})` : '';
-    li.textContent = `${t.borrower} ${t.type} "${t.book}" on ${t.date}${dueText}`;
-    if(t.type === 'borrowed' && new Date(t.dueDate) < new Date() && !t.returned) {
-      li.style.color = 'red';
-      li.textContent += ' ⚠ Overdue!';
-    }
+  const transactionListEl = document.getElementById("transactionList");
+  transactionListEl.innerHTML = "";
+  transactions.slice().reverse().forEach(t => {
+    const li = document.createElement("li");
+    li.textContent = `${t.studentId} ${t.type} bookID=${t.bookId} on ${t.date}`;
     transactionListEl.appendChild(li);
   });
-  updateStats();
 }
 
-function updateTransactionBorrowers() {
-  const select = document.getElementById('transactionBorrower');
-  select.innerHTML = '';
-  borrowers.forEach(b => {
-    const opt = document.createElement('option'); opt.value = b.name; opt.textContent = `${b.name} (${b.id})`;
-    select.appendChild(opt);
-  });
-}
-
-function updateTransactionBooks() {
-  const select = document.getElementById('transactionBook');
-  select.innerHTML = '';
-  books.forEach(b => {
-    if(b.status === 'Available' || !b.status) {
-      const opt = document.createElement('option'); opt.value = b.title; opt.textContent = b.title;
-      select.appendChild(opt);
-    }
-  });
-}
-
-document.getElementById('transactionForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const borrower = document.getElementById('transactionBorrower').value;
-  const bookTitle = document.getElementById('transactionBook').value;
-  if(!borrower || !bookTitle) { alert('Select borrower and book'); return; }
-  const date = new Date().toLocaleDateString();
-  const due = new Date(); due.setDate(due.getDate() + 7);
-  transactions.push({ borrower, book: bookTitle, type: 'borrowed', date, dueDate: due.toLocaleDateString(), returned: false });
-  // set book status
-  books = books.map(b => b.title === bookTitle ? { ...b, status: 'Borrowed' } : b);
-  saveData(); renderTransactions(); renderBooks(); renderBorrowers();
-});
-
-document.getElementById('returnBtn').addEventListener('click', () => {
-  const borrower = document.getElementById('transactionBorrower').value;
-  const bookTitle = document.getElementById('transactionBook').value;
-  if(!borrower || !bookTitle) { alert('Select borrower and book'); return; }
-  // find latest borrowed transaction not returned for that pair
-  for(let i = transactions.length-1; i>=0; i--){
-    const t = transactions[i];
-    if(t.borrower === borrower && t.book === bookTitle && !t.returned && t.type === 'borrowed'){
-      transactions.push({ borrower, book: bookTitle, type: 'returned', date: new Date().toLocaleDateString(), returned: true });
-      transactions[i].returned = true; // mark earlier record
-      break;
-    }
-  }
-  books = books.map(b => b.title === bookTitle ? { ...b, status: 'Available' } : b);
-  saveData(); renderTransactions(); renderBooks();
-});
-
-/* =======================
-   EXPORT / BACKUP / RESTORE
-   ======================= */
-function exportTransactions() {
-  let csv = "Borrower,Book,Type,Date,Due Date\n";
-  transactions.forEach(t => {
-    csv += `${t.borrower},${t.book},${t.type},${t.date},${t.dueDate || ""}\n`;
-  });
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = "transactions.csv"; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportPDF() {
-  const doc = new jspdf.jsPDF();
-  doc.text("BHC Library - Transactions Report", 20, 20);
-  let rows = transactions.map(t => [t.borrower, t.book, t.type, t.date, t.dueDate || ""]);
-  doc.autoTable({ head: [["Borrower","Book","Type","Date","Due Date"]], body: rows, startY: 30 });
-  doc.save("transactions_report.pdf");
-}
-
-function exportJSON() {
-  const data = { books, borrowers, transactions, admins };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'library_backup.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importJSON(event) {
-  const file = event.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      books = data.books || []; borrowers = data.borrowers || []; transactions = data.transactions || []; admins = data.admins || admins;
-      // ensure there's always at least one admin
-      if(!admins.length) admins = [{ username: "admin", password: "admin123", role: "Super Admin" }];
-      // set loggedInAdmin if missing
-      if(!loggedInAdmin || !admins.some(a => a.username === loggedInAdmin.username)) {
-        loggedInAdmin = { username: admins[0].username, role: admins[0].role };
-      }
-      saveData();
-      alert('Data restored successfully!');
-      // re-render everything
-      renderBooks(); renderBorrowers(); renderTransactions(); renderAdmins(); applyRolePermissions();
-    } catch(err) {
-      alert('Invalid JSON file.');
-      console.error(err);
-    }
-  };
-  reader.readAsText(file);
-}
-
-/* =======================
-   STATS + REPORTS
-   ======================= */
-function updateStats() {
-  document.getElementById('statBooks').textContent = books.length;
-  document.getElementById('statBorrowed').textContent = books.filter(b => b.status === 'Borrowed').length;
-  document.getElementById('statAvailable').textContent = books.filter(b => b.status === 'Available' || !b.status).length;
-  document.getElementById('statOverdue').textContent = transactions.filter(t => t.type === 'borrowed' && new Date(t.dueDate) < new Date() && !t.returned).length;
-  // reports stats
-  document.getElementById('statTotalBorrowers').textContent = borrowers.length;
-  document.getElementById('statTotalTransactions').textContent = transactions.length;
-  document.getElementById('statReturned').textContent = transactions.filter(t => t.type === 'returned' || t.returned).length;
-  document.getElementById('statReportOverdue').textContent = transactions.filter(t => t.type === 'borrowed' && new Date(t.dueDate) < new Date() && !t.returned).length;
-  // notifications
-  updateNotifications();
-}
-
-function renderReports() {
-  // build overdue list and chart
-  const overdueListEl = document.getElementById('overdueList');
-  overdueListEl.innerHTML = '';
-  const overdue = transactions.filter(t => t.type === 'borrowed' && new Date(t.dueDate) < new Date() && !t.returned);
-  overdue.forEach(t => {
-    const li = document.createElement('li'); li.textContent = `${t.borrower} - "${t.book}" (Due: ${t.dueDate})`;
-    overdueListEl.appendChild(li);
-  });
-
-  // monthly chart (approx by date string parsing)
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  let borrowedData = Array(12).fill(0);
-  let returnedData = Array(12).fill(0);
-  transactions.forEach(t => {
-    const d = new Date(t.date);
-    if(!isNaN(d)) {
-      const m = d.getMonth();
-      if(t.type === 'borrowed') borrowedData[m]++;
-      if(t.type === 'returned') returnedData[m]++;
-    }
-  });
-
-  const ctx = document.getElementById('reportChart').getContext('2d');
-  if(window.reportChartInstance) window.reportChartInstance.destroy();
-  window.reportChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: months,
-      datasets: [
-        { label: 'Borrowed', data: borrowedData, backgroundColor: '#2B4B9C' },
-        { label: 'Returned', data: returnedData, backgroundColor: '#8B1C3D' }
-      ]
-    },
-    options: { responsive: true, scales: { y: { beginAtZero: true } } }
-  });
-}
-
-/* =======================
-   ADMINS (with roles)
-   ======================= */
-const adminListEl = document.getElementById('adminList');
-function renderAdmins(){
-  adminListEl.innerHTML = '';
-  admins.forEach((a, idx) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${a.username}</td><td>${a.role || 'Viewer'}</td>
-      <td><button class="delete">🗑 Remove</button></td>`;
-    tr.querySelector('.delete').addEventListener('click', () => {
-      if(!confirm('Remove admin?')) return;
-      admins.splice(idx,1); saveData(); renderAdmins(); applyRolePermissions();
-    });
+/* ======================
+   ADMINS
+   ====================== */
+function renderAdmins() {
+  const adminListEl = document.getElementById("adminList");
+  adminListEl.innerHTML = "";
+  admins.forEach(a => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${a.username}</td><td>${a.role}</td><td>-</td>`;
     adminListEl.appendChild(tr);
   });
 }
-document.getElementById('adminForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const username = document.getElementById('adminUsername').value.trim();
-  const password = document.getElementById('adminPassword').value;
-  const role = document.getElementById('adminRole').value;
-  if(!username || !password) return alert('Enter username & password');
-  admins.push({ username, password, role });
-  saveData(); renderAdmins(); applyRolePermissions();
-  e.target.reset();
+
+/* ======================
+   DASHBOARD STATS
+   ====================== */
+function updateStats() {
+  document.getElementById("statBooks").textContent = books.length;
+  const borrowed = books.filter(b => b.status === "Borrowed").length;
+  document.getElementById("statBorrowed").textContent = borrowed;
+  document.getElementById("statAvailable").textContent = books.length - borrowed;
+  const overdue = transactions.filter(t => t.type === "Overdue").length;
+  document.getElementById("statOverdue").textContent = overdue;
+}
+
+/* ======================
+   INIT
+   ====================== */
+async function init() {
+  await fetchBooks();
+  await fetchBorrowers();
+  await fetchTransactions();
+  await fetchAdmins();
+  if (books.length === 0) await seedBooks();
+}
+init();
+
+/* ======================
+   UI HELPERS
+   ====================== */
+function showSection(id) {
+  document.querySelectorAll("main section").forEach(sec => sec.classList.remove("active"));
+  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  document.querySelector(`.sidebar a[data-section="${id}"]`).classList.add("active");
+}
+
+/* Dark mode */
+document.getElementById("darkToggle").addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+});
+if (localStorage.getItem("darkMode") === "true") {
+  document.body.classList.add("dark");
+}
+
+/* Logout */
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  localStorage.removeItem("loggedInAdmin");
+  window.location.href = "index.html";
 });
 
-/* =======================
-   Notifications
-   ======================= */
-function updateNotifications(){
-  const overdue = transactions.filter(t => t.type === 'borrowed' && new Date(t.dueDate) < new Date() && !t.returned);
-  const badge = document.getElementById('notifBadge');
-  const list = document.getElementById('notifList');
-  list.innerHTML = '';
-  if(overdue.length === 0) {
-    badge.style.display = 'none';
-    list.innerHTML = '<li class="empty">No notifications</li>';
-  } else {
-    badge.style.display = 'inline-block';
-    badge.textContent = overdue.length;
-    overdue.forEach(o => {
-      const li = document.createElement('li');
-      li.textContent = `⚠ ${o.book} overdue by ${o.borrower} (Due: ${o.dueDate})`;
-      list.appendChild(li);
-    });
+/* Notifications dropdown */
+const notifBtn = document.getElementById("notifBtn");
+const notifDropdown = document.getElementById("notifDropdown");
+notifBtn.addEventListener("click", () => {
+  notifDropdown.style.display = notifDropdown.style.display === "block" ? "none" : "block";
+});
+window.addEventListener("click", (e) => {
+  if (!notifBtn.contains(e.target) && !notifDropdown.contains(e.target)) {
+    notifDropdown.style.display = "none";
   }
-}
-/* toggle dropdown */
-document.getElementById('notifBtn').addEventListener('click', (e) => {
-  const dd = document.getElementById('notifDropdown');
-  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
-});
-/* close notif dropdown when clicking outside */
-document.addEventListener('click', (e) => {
-  const dd = document.getElementById('notifDropdown');
-  if(!e.target.closest('.notif-btn') && !e.target.closest('.notif-dropdown')) {
-    dd.style.display = 'none';
-  }
 });
 
-/* =======================
-   Init & small helpers
-   ======================= */
-function renderAll(){
-  renderBooks();
-  renderBorrowers();
-  renderTransactions();
-  renderAdmins();
-  updateStats();
-  applyRolePermissions();
-}
-function renderTransactions(){ /* already defined above earlier — ensure same name */
-  // we defined earlier; call it
-  // but to be safe, re-run logic:
-  transactionListEl.innerHTML = '';
-  transactions.slice().reverse().forEach(t => {
-    const li = document.createElement('li');
-    const dueText = t.dueDate ? ` (Due: ${t.dueDate})` : '';
-    li.textContent = `${t.borrower} ${t.type} "${t.book}" on ${t.date}${dueText}`;
-    if(t.type === 'borrowed' && new Date(t.dueDate) < new Date() && !t.returned) {
-      li.style.color = 'red'; li.textContent += ' ⚠ Overdue!';
-    }
-    transactionListEl.appendChild(li);
-  });
-  updateStats();
-}
-
-/* dark mode toggle */
-document.getElementById('darkToggle').addEventListener('click', () => {
-  document.body.classList.toggle('dark');
-  const btn = document.getElementById('darkToggle');
-  btn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+/* Live search for books */
+document.getElementById("searchBook").addEventListener("input", (e) => {
+  renderBooks(e.target.value);
 });
 
-/* logout */
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  // remove loggedInAdmin and go to index/login (if exists)
-  localStorage.removeItem('loggedInAdmin');
-  alert('Logged out (for demo). Redirecting to index.html if exists.');
-  // redirect to index.html (your login)
-  window.location.href = 'index.html';
+/* Refresh filter */
+document.getElementById("filterCategory").addEventListener("change", () => {
+  renderBooks(document.getElementById("searchBook").value);
 });
-
-/* set current loggedInAdmin display and permissions */
-applyRolePermissions();
-
-/* initial render */
-renderAll();
-
-/* update notifications periodically (every 15s) to keep badge fresh */
-setInterval(updateNotifications, 15000);
-updateNotifications();
-
 </script>
 </body>
 </html>
